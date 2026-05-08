@@ -20,6 +20,7 @@ export const registerUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      role:user.role,
       token: jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '10d' }),
     });
   } catch (error) {
@@ -38,6 +39,7 @@ export const loginUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        role:user.role,
         token: jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30m' }),
       });
     } else {
@@ -109,5 +111,29 @@ export const placeOrder = async (req, res) => {
     res.status(201).json(user); // Return user to sync frontend state
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all users (Admin only)
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await Product.find({}); // Fetches all users for dashboard and list
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching users' });
+  }
+};
+
+// Toggle user block status
+export const updateUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      user.isBlock = req.body.isBlock;
+      const updatedUser = await user.save();
+      res.json(updatedUser);
+    }
+  } catch (error) {
+    res.status(404).json({ message: 'User not found' });
   }
 };
