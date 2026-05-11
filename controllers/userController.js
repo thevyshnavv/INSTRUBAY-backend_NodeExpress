@@ -35,6 +35,9 @@ export const loginUser = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (user && (await bcrypt.compare(password, user.password))) {
+      if (user.isBlock) {
+        return res.status(403).json({ message: 'Your account has been blocked. Please contact admin.' });
+      }
       res.json({
         _id: user._id,
         name: user.name,
@@ -117,10 +120,24 @@ export const placeOrder = async (req, res) => {
 // Get all users (Admin only)
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await Product.find({}); // Fetches all users for dashboard and list
+    const users = await User.find({}); // Fetches all users for dashboard and list
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching users' });
+  }
+};
+
+// Get single user by ID (Admin only)
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).populate('wishlist');
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user' });
   }
 };
 
@@ -130,10 +147,30 @@ export const updateUserStatus = async (req, res) => {
     const user = await User.findById(req.params.id);
     if (user) {
       user.isBlock = req.body.isBlock;
-      const updatedUser = await user.save();
+      await user.save();
+      const updatedUser = await User.findById(req.params.id).populate('wishlist');
       res.json(updatedUser);
     }
   } catch (error) {
     res.status(404).json({ message: 'User not found' });
+  }
+};
+
+// Get all orders (Admin only)
+export const getAllOrders = async (req, res) => {
+  try {
+    const users = await User.find({}, 'name email orders');
+    const allOrders = users.reduce((acc, user) => {
+      const userOrders = user.orders.map(order => ({
+        ...order,
+        userName: user.name,
+        userEmail: user.email,
+        userId: user._id
+      }));
+      return acc.concat(userOrders);
+    }, []);
+    res.json(allOrders);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching orders' });
   }
 };
